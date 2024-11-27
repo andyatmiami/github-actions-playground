@@ -1,3 +1,6 @@
+name: GitHub Actions Run Script
+run-name: ${{ github.actor }} is (still) testing out GitHub Actions 🚀
+on: [push]
 jobs:
   example-job:
     runs-on: ubuntu-latest
