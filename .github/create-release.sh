@@ -1,23 +1,5 @@
 #! /usr/bin/env bash
 
-# _get_target_branch()
-# {
-#     local tag="${1:-}"
-
-#     local tag_parts=($(printf "%s" "${tag}" | tr "." " "))
-#     local target_branch="${tag_parts[0]}.${tag_parts[1]}-branch"
-
-#     printf "%s" "${target_branch}"
-# }
-
-# target_branch=$(_get_target_branch "$GITHUB_REF_NAME")
-
-# gh release create "${GITHUB_REF_NAME}" \
-#     --repo="$GITHUB_REPOSITORY" \
-#     --title="${GITHUB_REF_NAME}" \
-#     --target "${target_branch}" \
-#     --generate-notes
-
 release_branch="${TARGET_BRANCH}"
 if [ -z "${release_branch}" ]; then
     raw_branch=$(git branch -r --sort=-committerdate --list "*/v*" | head -n 1)
@@ -31,8 +13,10 @@ resolved_tag="${RELEASE_TAG}"
 if [ -z "${resolved_tag}" ]; then
     tag_prefix="${release_branch%-branch}"
     last_tag=$(git tag --sort=-creatordate -l "${tag_prefix}*" | head -n 1)
+    notes_start_tag="${last_tag}"
     if [ -z "${last_tag}" ]; then
         last_tag="${tag_prefix}.0-0"
+        notes_start_tag=$(git tag --sort=-creatordate -l "v*" | head -n 1)
     fi
     tag_parts=($(printf "%s" "${last_tag}" | tr '-' ' '))
     release_prefix="${tag_parts[0]}"
@@ -43,7 +27,8 @@ fi
 echo "Using tag ${resolved_tag}"
 
 gh release create "${resolved_tag}" \
-    --repo="$GITHUB_REPOSITORY" \
-    --title="${resolved_tag}" \
+    --repo "$GITHUB_REPOSITORY" \
+    --title "${resolved_tag}" \
     --target "${release_branch}" \
-    --generate-notes
+    --generate-notes \
+    --notes-start-tag "${notes_start_tag}"
