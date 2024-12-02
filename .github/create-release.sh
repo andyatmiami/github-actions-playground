@@ -33,6 +33,9 @@ resolved_tag="${RELEASE_TAG}"
 if [ -z "${resolved_tag}" ]; then
     tag_prefix="${release_branch%-branch}"
     last_tag=$(git tag --sort=-creatordate -l "${tag_prefix}*" | head -n 1)
+    if [ -z "${last_tag}" ]; then
+        last_tag="${tag_prefix}.0-1"
+    fi
     tag_parts=($(printf "%s" "${last_tag}" | tr '-' ' '))
     release_prefix="${tag_parts[0]}"
     release_id="$(( ${tag_parts[1]} + 1 ))"
