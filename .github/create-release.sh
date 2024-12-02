@@ -20,7 +20,6 @@
 
 release_branch="${TARGET_BRANCH}"
 if [ -z "${release_branch}" ]; then
-    echo "HERE"
     raw_branch=$(git branch -r --sort=-committerdate --list "*/v*" | head -n 1)
     trimmed_branch="${raw_branch#${raw_branch%%[![:space:]]*}}"
     release_branch="${trimmed_branch#origin/}"
@@ -28,3 +27,5 @@ fi
 
 echo "Using branch ${release_branch}"
 
+echo "HERE"
+git tag
