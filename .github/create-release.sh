@@ -18,12 +18,13 @@
 #     --target "${target_branch}" \
 #     --generate-notes
 
-target_branch="${TARGET_BRANCH}"
-if [ -z "${target_branch}" ]; then
+release_branch="${TARGET_BRANCH}"
+if [ -z "${release_branch}" ]; then
+    echo "HERE"
     raw_branch=$(git branch -r --sort=-committerdate --list "*/v*" | head -n 1)
-    trimmed_branch="${latest_branch#${latest_branch%%[![:space:]]*}}"
-    target_branch="${trimmed_branch#origin/}"
+    trimmed_branch="${raw_branch#${raw_branch%%[![:space:]]*}}"
+    release_branch="${trimmed_branch#origin/}"
 fi
 
-echo "Using branch ${target_branch}"
+echo "Using branch ${release_branch}"
 
