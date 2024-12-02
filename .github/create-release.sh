@@ -18,10 +18,12 @@
 #     --target "${target_branch}" \
 #     --generate-notes
 
-echo "HERE"
 
-git branch -r
+if [ -z "${TARGET_BRANCH}" ]; then
+    raw_branch=$(git branch -r --sort=-committerdate --list "*/v*" | head -n 1)
+    trimmed_branch="${latest_branch#${latest_branch%%[![:space:]]*}}"
+    TARGET_BRANCH="${trimmed_branch#origin/}"
+fi
 
-echo "NOW HERE"
+echo "Using branch ${TARGET_BRANCH}"
 
-git branch -r --sort=-committerdate --list "*/v*"
