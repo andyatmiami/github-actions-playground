@@ -37,4 +37,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          "${GITHUB_WORKSPACE}"/.github/release.sh    
+          "${GITHUB_WORKSPACE}"/.github/create-release.sh    
