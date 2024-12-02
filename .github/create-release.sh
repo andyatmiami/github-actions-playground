@@ -27,8 +27,6 @@ fi
 
 echo "Using branch ${release_branch}"
 
-echo "HERE"
-
 resolved_tag="${RELEASE_TAG}"
 if [ -z "${resolved_tag}" ]; then
     tag_prefix="${release_branch%-branch}"
@@ -43,3 +41,9 @@ if [ -z "${resolved_tag}" ]; then
 fi
 
 echo "Using tag ${resolved_tag}"
+
+gh release create "${resolved_tag}" \
+    --repo="$GITHUB_REPOSITORY" \
+    --title="${resolved_tag}" \
+    --target "${release_branch}" \
+    --generate-notes
