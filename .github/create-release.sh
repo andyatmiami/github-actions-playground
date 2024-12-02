@@ -18,4 +18,10 @@
 #     --target "${target_branch}" \
 #     --generate-notes
 
+echo "HERE"
+
+git branch -r
+
+echo "NOW HERE"
+
 git branch -r --sort=-committerdate --list "*/v*"
