@@ -1,9 +1,25 @@
 name: Create release
 
 on:
-  push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release Tag:"
+        type: string
+      target_branch:
+        description: "Target Branch:"
+        type: string        
+  workflow_call:
+      release_tag:
+        description: "Release Tag:"
+        type: string
+      target_branch:
+        description: "Target Branch:"
+        type: string  
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag }}
+  TARGET_BRANCH: ${{ inputs.target_branch }}
 
 permissions:
   contents: write
@@ -12,9 +28,6 @@ jobs:
   release:
     name: Release pushed tag
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: ./scripts    
     steps:
       - name: Check out the repository to the runner
         uses: actions/checkout@v4  
@@ -23,4 +36,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./test-script.sh    
+          "${GITHUB_WORKSPACE}"/.github/release.sh    
