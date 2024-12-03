@@ -84,7 +84,7 @@ release_branch=$( _get_release_branch "${TARGET_BRANCH}" )
 
 echo "Using branch '${release_branch}'"
 
-target_release_json=$( _get_target_release_json "${RELEASE_TAG}" )
+target_release_json=$( _get_target_release_json "${release_branch}" "${RELEASE_TAG}" )
 release_name=$( jq -r '.release_name' <<< "${target_release_json}" )
 notes_start_tag=$( jq -r '.notes_start_tag' <<< "${target_release_json}" )
 
