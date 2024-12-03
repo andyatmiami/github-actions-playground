@@ -24,8 +24,7 @@ _get_latest_release_tag()
         --json tagName,publishedAt \
         --order desc \
         --limit 1 \
-        --jq '.[0].tagName' \
-    | 
+        --jq '.[0].tagName'
 }
 
 _same_branch_as_prior_release()
