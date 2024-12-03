@@ -22,9 +22,7 @@ _get_latest_release_tag()
         --exclude-drafts \
         --exclude-pre-releases \
         --json tagName,publishedAt \
-        --order desc \
-        --limit 1 \
-        --jq '.[0].tagName'
+        --jq 'sort_by(.publishedAt) | reverse | .[0].tagName'
 }
 
 _same_branch_as_prior_release()
