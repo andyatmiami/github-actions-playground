@@ -18,7 +18,7 @@ _get_release_branch()
 _get_latest_release_tag()
 {
     gh release list \
-        --repo opendatahub-io/kubeflow \
+        --repo "$GITHUB_REPOSITORY" \
         --exclude-drafts \
         --exclude-pre-releases \
         --json tagName,publishedAt \
