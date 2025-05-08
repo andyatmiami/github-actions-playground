@@ -7,6 +7,9 @@ on:
 permissions:
   issues: write
 
+env:
+    GH_TOKEN: ${{ github.token }}
+
 jobs:
   handle-sub-issue-command:
     if: github.event.issue.pull_request == null  # ✅ Only trigger on issues, not PRs
@@ -31,50 +34,3 @@ jobs:
                 }
               }
             }" | jq -r '.data.repository.issue.id')
-
-          while IFS= read -r line; do
-            if echo "$line" | grep -qE '^/add-sub-issue'; then
-              args=$(echo "$line" | sed -E 's|^/add-sub-issue *||')
-              for issue in $args; do
-
-                child_issue_number=$(echo "$issue" | sed 's/^#//')
-                child_issue_node_id=$(gh api graphql -f query="
-                  query {
-                    repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
-                      issue(number: \"$child_issue_number\") {
-                        id
-                      }
-                    }
-                  }" | jq -r '.data.repository.issue.id')
-                echo "📎 Adding sub-issue: $child_issue_number"
-
-                gh api graphql -f query="$(cat <<EOF
-                  mutation {
-                    addSubIssue(input: {
-                      issueId: "$parent_issue_node_id",
-                      subIssueId: "$child_issue_node_id"
-                    }) {
-                      clientMutationId
-                      issue {
-                        id
-                        title
-                      }
-                      subIssue {
-                        id
-                        title
-                      }
-                    }
-                  }
-                  EOF
-                )"
-              done
-
-            elif echo "$line" | grep -qE '^/remove-sub-issue'; then
-              args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
-              for issue in $args; do
-                clean_issue=$(echo "$issue" | sed 's/^#//')
-                echo "❌ Removing sub-issue: $clean_issue"
-                # TODO: Add GitHub API call to unlink sub-issue
-              done
-            fi
-          done < comment.txt
