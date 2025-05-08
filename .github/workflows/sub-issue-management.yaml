@@ -74,5 +74,37 @@ jobs:
                   }"
 
               done
+            elif echo "$line" | grep -qE '^/remove-sub-issue'; then
+              args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
+              for issue in $args; do
+                child_issue_number=$(echo "$issue" | sed 's/^#//')
+                child_issue_node_id=$(gh api graphql -f query="
+                  query {
+                    repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
+                      issue(number: $child_issue_number) {
+                        id
+                      }
+                    }
+                  }" | jq -r '.data.repository.issue.id')
+                echo "child_issue_node_id: ${child_issue_node_id}"
+
+                gh api graphql -f query="
+                  mutation {
+                    removeSubIssue(input: {
+                      issueId: \"$parent_issue_node_id\",
+                      subIssueId: \"$child_issue_node_id\"
+                    }) {
+                      clientMutationId
+                      issue {
+                        id
+                        title
+                      }
+                      subIssue {
+                        id
+                        title
+                      }
+                    }
+                  }"
+              done
             fi
           done < comment.txt
