@@ -54,5 +54,6 @@ jobs:
                     }
                   }" | jq -r '.data.repository.issue.id')
                 echo "child_issue_node_id: ${child_issue_node_id}"
+              done
             fi
           done < comment.txt
