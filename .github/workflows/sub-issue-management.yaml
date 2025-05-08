@@ -38,3 +38,21 @@ jobs:
             }" | jq -r '.data.repository.issue.id')
 
           echo "parent_issue_node_id: ${parent_issue_node_id}"
+
+          while IFS= read -r line; do
+            if echo "$line" | grep -qE '^/add-sub-issue'; then
+              args=$(echo "$line" | sed -E 's|^/add-sub-issue *||')
+              for issue in $args; do
+
+                child_issue_number=$(echo "$issue" | sed 's/^#//')
+                child_issue_node_id=$(gh api graphql -f query="
+                  query {
+                    repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
+                      issue(number: $child_issue_number) {
+                        id
+                      }
+                    }
+                  }" | jq -r '.data.repository.issue.id')
+                echo "child_issue_node_id: ${child_issue_node_id}"
+            fi
+          done < comment.txt
