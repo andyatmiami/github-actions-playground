@@ -54,6 +54,25 @@ jobs:
                     }
                   }" | jq -r '.data.repository.issue.id')
                 echo "child_issue_node_id: ${child_issue_node_id}"
+
+                gh api graphql -f query="
+                  mutation {
+                    addSubIssue(input: {
+                      issueId: \"$parent_issue_node_id\",
+                      subIssueId: \"$child_issue_node_id\"
+                    }) {
+                      clientMutationId
+                      issue {
+                        id
+                        title
+                      }
+                      subIssue {
+                        id
+                        title
+                      }
+                    }
+                  }"
+
               done
             fi
           done < comment.txt
