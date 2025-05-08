@@ -22,6 +22,8 @@ jobs:
 
       - name: Parse and act on slash commands
         run: |
+          set -euo pipefail
+
           gh_owner="${GITHUB_REPOSITORY%/*}"
           gh_repo_name="${GITHUB_REPOSITORY#*/}"
 
@@ -34,3 +36,5 @@ jobs:
                 }
               }
             }" | jq -r '.data.repository.issue.id')
+
+          echo "parent_issue_node_id: ${parent_issue_node_id}"
