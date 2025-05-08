@@ -1,0 +1,39 @@
+name: Sub-Issue Slash Command Handler
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  handle-sub-issue-command:
+    if: github.event.issue.pull_request == null  # ✅ Only trigger on issues, not PRs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Write comment body to file
+        run: |
+          echo "${{ github.event.comment.body }}" > comment.txt
+
+      - name: Parse and act on slash commands
+        run: |
+          while IFS= read -r line; do
+            if echo "$line" | grep -qE '^/add-sub-issue'; then
+              args=$(echo "$line" | sed -E 's|^/add-sub-issue *||')
+              for issue in $args; do
+                clean_issue=$(echo "$issue" | sed 's/^#//')
+                echo "📎 Adding sub-issue: $clean_issue"
+                # TODO: Add GitHub API call to link sub-issue
+              done
+
+            elif echo "$line" | grep -qE '^/remove-sub-issue'; then
+              args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
+              for issue in $args; do
+                clean_issue=$(echo "$issue" | sed 's/^#//')
+                echo "❌ Removing sub-issue: $clean_issue"
+                # TODO: Add GitHub API call to unlink sub-issue
+              done
+            fi
+          done < comment.txt
