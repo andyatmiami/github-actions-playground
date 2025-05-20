@@ -24,6 +24,26 @@ jobs:
         run: |
           set -euo pipefail
 
+          parse_issue_number() {
+            local input="${1:-}"
+
+            case "$input" in
+              [0-9]*)
+                printf "%s" "$input"
+                ;;
+              \#*)
+                printf "%s" "$input" | sed -n 's/^#\([0-9]\+\)$/\1/p'
+                ;;
+              *"/issues/"*)
+                printf "%s" "$input" | sed -n 's#.*/issues/\([0-9][0-9]*\)$#\1#p'
+                ;;
+              *)
+                echo "Error: Could not parse issue number from input: '$input'" >&2
+                return 1
+                ;;
+            esac
+          }
+
           gh_owner="${GITHUB_REPOSITORY%/*}"
           gh_repo_name="${GITHUB_REPOSITORY#*/}"
 
@@ -44,7 +64,7 @@ jobs:
               args=$(echo "$line" | sed -E 's|^/add-sub-issue *||')
               for issue in $args; do
 
-                child_issue_number=$(echo "$issue" | sed 's/^#//')
+                child_issue_number=$(parse_issue_number "$issue")
                 child_issue_node_id=$(gh api graphql -f query="
                   query {
                     repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
@@ -85,7 +105,7 @@ jobs:
             elif echo "$line" | grep -qE '^/remove-sub-issue'; then
               args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
               for issue in $args; do
-                child_issue_number=$(echo "$issue" | sed 's/^#//')
+                child_issue_number=$(parse_issue_number "$issue")
                 child_issue_node_id=$(gh api graphql -f query="
                   query {
                     repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
