@@ -125,7 +125,33 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          error_summary=$(<error_summary.txt)
+          error_summary=
+          if [ -f "errory_summary.txt"]; then
+            error_summary=$(<error_summary.txt)
+          fi
+
+          {
+            echo ":x: **GitHub Action Failed**"
+            echo
+            echo "The workflow encountered an error while processing your comment to manage sub-issues."
+            echo
+            echo ":point_right: [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID})"
+            echo
+
+            if [ -n "$error_summary" ]; then
+              echo "<details>"
+              echo "<summary>Expand to see error summary</summary>"
+              echo
+              echo '```bash'
+              echo "$error_summary"
+              echo '```'
+              echo "</details>"
+              echo
+            fi
+
+            echo "Please check the logs and try again, or open a bug report if the issue persists."
+          } > comment.md
+
           gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" \
             --method POST \
-            --field body=":x: The GitHub Action failed while processing your comment to manage sub-issues. [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID}) for more details.${error_summary:+\n**SUMMARY**\n```"$error_summary"```}"
+            --raw-field body="$(<comment.md)"
