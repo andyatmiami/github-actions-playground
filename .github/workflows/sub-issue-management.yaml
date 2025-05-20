@@ -55,6 +55,7 @@ jobs:
                   }" | jq -r '.data.repository.issue.id')
                 echo "child_issue_node_id: ${child_issue_node_id}"
 
+                set +e
                 response=$(gh api graphql -f query="
                   mutation {
                     addSubIssue(input: {
@@ -72,8 +73,9 @@ jobs:
                       }
                     }
                   }")
+                  set -e
 
-                  if ![ "$?" = "0" ]; then
+                  if ! [ "$?" = "0" ]; then
                     echo "FAILURE: ${response}"
                   fi
 
