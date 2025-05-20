@@ -78,9 +78,9 @@ jobs:
                   set -e
 
                   if ! [ "${rc}" = "0" ]; then
-                    error_msg="$(jq '.data.message' <<< "${response}")"
-                    if [ -n "${error_msg}" ]; then
-                      echo "FAILURE: ${error_msg}"
+                    error_messages="$(jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end <<< "${response}")"
+                    if [ -n "${error_messages}" ]; then
+                      echo "FAILURE: ${error_messages}"
                     else
                       echo "FAILURE: unknown error occurred.  please check https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} and open a bug report."
                     fi
