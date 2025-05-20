@@ -25,23 +25,74 @@ jobs:
           set -euo pipefail
 
           parse_issue_number() {
-            local input="${1:-}"
+            input="${1:-}"
 
-            case "$input" in
+            case "${input}" in
               [0-9]*)
-                printf "%s" "$input"
+                printf "%s" "${input}"
                 ;;
               \#*)
-                printf "%s" "$input" | sed -n 's/^#\([0-9]\+\)$/\1/p'
+                printf "%s" "${input}" | sed -n 's/^#\([0-9]\+\)$/\1/p'
                 ;;
               *"/issues/"*)
-                printf "%s" "$input" | sed -n 's#.*/issues/\([0-9][0-9]*\)$#\1#p'
+                printf "%s" "${input}" | sed -n 's#.*/issues/\([0-9][0-9]*\)$#\1#p'
                 ;;
               *)
-                echo "Error: Could not parse issue number from input: '$input'" > error_summary.txt
+                echo "Error: Could not parse issue number from input: '${input}'" > error_summary.txt
                 return 1
                 ;;
             esac
+          }
+
+          execute_mutation() {
+            mutation_body="${1:-}"
+
+            set +e
+            response=$(gh api graphql -f query="${mutation_body}")
+            rc=$?
+            set -e
+
+            if ! [ "${rc}" = "0" ]; then
+              jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end' <<< "${response}" > error_summary.txt
+              exit "${rc}"
+            fi
+          }
+
+          perform_sub_issue_mutation() {
+            action="${1:-}"  # "add" or "remove"
+            child_issue="${2:-}"
+
+            child_issue_number=$(parse_issue_number "${child_issue}")
+            child_issue_node_id=$(gh api graphql -f query="
+              query {
+                repository(owner: \"${gh_owner}\", name: \"${gh_repo_name}\") {
+                  issue(number: ${child_issue_number}) {
+                    id
+                  }
+                }
+              }" | jq -r '.data.repository.issue.id')
+            echo "child_issue_node_id: ${child_issue_node_id}"
+
+            mutation_field="${action}SubIssue"
+            mutation_query="
+              mutation {
+                ${mutation_field}(input: {
+                  issueId: \"${parent_issue_node_id}\",
+                  subIssueId: \"${child_issue_node_id}\"
+                }) {
+                  clientMutationId
+                  issue {
+                    id
+                    title
+                  }
+                  subIssue {
+                    id
+                    title
+                  }
+                }
+              }"
+
+            execute_mutation "${mutation_query}"
           }
 
           gh_owner="${GITHUB_REPOSITORY%/*}"
@@ -50,8 +101,8 @@ jobs:
           parent_issue_number=${{ github.event.issue.number }}
           parent_issue_node_id=$(gh api graphql -f query="
             query {
-              repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
-                issue(number: $parent_issue_number) {
+              repository(owner: \"${gh_owner}\", name: \"${gh_repo_name}\") {
+                issue(number: ${parent_issue_number}) {
                   id
                 }
               }
@@ -63,76 +114,12 @@ jobs:
             if echo "$line" | grep -qE '^/add-sub-issue'; then
               args=$(echo "$line" | sed -E 's|^/add-sub-issue *||')
               for issue in $args; do
-
-                child_issue_number=$(parse_issue_number "$issue")
-                child_issue_node_id=$(gh api graphql -f query="
-                  query {
-                    repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
-                      issue(number: $child_issue_number) {
-                        id
-                      }
-                    }
-                  }" | jq -r '.data.repository.issue.id')
-                echo "child_issue_node_id: ${child_issue_node_id}"
-
-                set +e
-                response=$(gh api graphql -f query="
-                  mutation {
-                    addSubIssue(input: {
-                      issueId: \"$parent_issue_node_id\",
-                      subIssueId: \"$child_issue_node_id\"
-                    }) {
-                      clientMutationId
-                      issue {
-                        id
-                        title
-                      }
-                      subIssue {
-                        id
-                        title
-                      }
-                    }
-                  }")
-                  rc=$?
-                  set -e
-
-                  if ! [ "${rc}" = "0" ]; then
-                    jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end' <<< "${response}" > error_summary.txt
-                    exit "${rc}"
-                  fi
-
+                perform_sub_issue_mutation "add" "$issue"
               done
             elif echo "$line" | grep -qE '^/remove-sub-issue'; then
               args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
               for issue in $args; do
-                child_issue_number=$(parse_issue_number "$issue")
-                child_issue_node_id=$(gh api graphql -f query="
-                  query {
-                    repository(owner: \"$gh_owner\", name: \"$gh_repo_name\") {
-                      issue(number: $child_issue_number) {
-                        id
-                      }
-                    }
-                  }" | jq -r '.data.repository.issue.id')
-                echo "child_issue_node_id: ${child_issue_node_id}"
-
-                gh api graphql -f query="
-                  mutation {
-                    removeSubIssue(input: {
-                      issueId: \"$parent_issue_node_id\",
-                      subIssueId: \"$child_issue_node_id\"
-                    }) {
-                      clientMutationId
-                      issue {
-                        id
-                        title
-                      }
-                      subIssue {
-                        id
-                        title
-                      }
-                    }
-                  }"
+                perform_sub_issue_mutation "remove" "$issue"
               done
             fi
           done < comment.txt
