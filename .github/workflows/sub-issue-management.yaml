@@ -55,7 +55,7 @@ jobs:
                   }" | jq -r '.data.repository.issue.id')
                 echo "child_issue_node_id: ${child_issue_node_id}"
 
-                gh api graphql -f query="
+                response=$(gh api graphql -f query="
                   mutation {
                     addSubIssue(input: {
                       issueId: \"$parent_issue_node_id\",
@@ -71,7 +71,11 @@ jobs:
                         title
                       }
                     }
-                  }"
+                  }")
+
+                  if ![ "$?" = "0" ]; then
+                    echo "FAILURE: ${response}"
+                  fi
 
               done
             elif echo "$line" | grep -qE '^/remove-sub-issue'; then
