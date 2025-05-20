@@ -78,7 +78,7 @@ jobs:
                   set -e
 
                   if ! [ "${rc}" = "0" ]; then
-                    error_messages="$(jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end <<< "${response}")"
+                    error_messages="$(jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end' <<< "${response}")"
                     if [ -n "${error_messages}" ]; then
                       echo "FAILURE: ${error_messages}"
                     else
