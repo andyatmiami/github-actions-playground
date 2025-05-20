@@ -127,7 +127,7 @@ jobs:
           COMMENT_URL: ${{ github.event.comment.html_url }}
         run: |
           error_summary=
-          if [ -f "error_summary.txt"]; then
+          if [ -f "error_summary.txt" ]; then
             error_summary=$(<error_summary.txt)
           fi
 
