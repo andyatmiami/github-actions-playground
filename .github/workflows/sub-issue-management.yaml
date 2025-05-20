@@ -38,7 +38,7 @@ jobs:
                 printf "%s" "$input" | sed -n 's#.*/issues/\([0-9][0-9]*\)$#\1#p'
                 ;;
               *)
-                echo "Error: Could not parse issue number from input: '$input'" >&2
+                echo "Error: Could not parse issue number from input: '$input'" > error_summary.txt
                 return 1
                 ;;
             esac
