@@ -124,6 +124,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
         run: |
           error_summary=
           if [ -f "error_summary.txt"]; then
@@ -133,7 +134,7 @@ jobs:
           {
             echo ":x: **GitHub Action Failed**"
             echo
-            echo "The workflow encountered an error while processing your comment to manage sub-issues."
+            echo "The workflow encountered an error while processing [your comment](${COMMENT_URL}) to manage sub-issues."
             echo
             echo ":point_right: [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID})"
             echo
