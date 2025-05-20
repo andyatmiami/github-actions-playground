@@ -72,10 +72,12 @@ jobs:
                         title
                       }
                     }
-                  }")
+                  }" 2>&1)
+                  rc=$?
+                  echo "return code: ${rc}"
                   set -e
 
-                  if ! [ "$?" = "0" ]; then
+                  if ! [ "${rc}" = "0" ]; then
                     echo "FAILURE: ${response}"
                   fi
 
