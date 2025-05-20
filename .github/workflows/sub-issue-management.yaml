@@ -55,7 +55,6 @@ jobs:
                   }" | jq -r '.data.repository.issue.id')
                 echo "child_issue_node_id: ${child_issue_node_id}"
 
-                set +e
                 response=$(gh api graphql -f query="
                   mutation {
                     addSubIssue(input: {
@@ -75,17 +74,6 @@ jobs:
                   }")
                   rc=$?
                   echo "return code: ${rc}"
-                  set -e
-
-                  if ! [ "${rc}" = "0" ]; then
-                    error_messages="$(jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end' <<< "${response}")"
-                    if [ -n "${error_messages}" ]; then
-                      echo "FAILURE: ${error_messages}"
-                    else
-                      echo "FAILURE: unknown error occurred.  please check https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} and open a bug report."
-                    fi
-                  fi
-
               done
             elif echo "$line" | grep -qE '^/remove-sub-issue'; then
               args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
@@ -121,3 +109,15 @@ jobs:
               done
             fi
           done < comment.txt
+
+      - name: Post error comment if failure
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" \
+            --method POST \
+            --field body=":x: The GitHub Action failed while processing your comment to manage sub-issues. [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID}) for more details."
