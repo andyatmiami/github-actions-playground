@@ -55,6 +55,7 @@ jobs:
                   }" | jq -r '.data.repository.issue.id')
                 echo "child_issue_node_id: ${child_issue_node_id}"
 
+                set +e
                 response=$(gh api graphql -f query="
                   mutation {
                     addSubIssue(input: {
@@ -73,7 +74,13 @@ jobs:
                     }
                   }")
                   rc=$?
-                  echo "return code: ${rc}"
+                  set -e
+
+                  if ! [ "${rc}" = "0" ]; then
+                    jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end' <<< "${response}" > error_summary.txt
+                    exit "${rc}"
+                  fi
+
               done
             elif echo "$line" | grep -qE '^/remove-sub-issue'; then
               args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
@@ -118,6 +125,7 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          error_summary=$(<error_summary.txt)
           gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" \
             --method POST \
-            --field body=":x: The GitHub Action failed while processing your comment to manage sub-issues. [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID}) for more details."
+            --field body=":x: The GitHub Action failed while processing your comment to manage sub-issues. [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID}) for more details.${error_summary:+\n**SUMMARY**\n```"$error_summary"```}"
