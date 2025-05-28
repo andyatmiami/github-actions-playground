@@ -68,7 +68,7 @@ jobs:
             };
 
             const performSubIssueMutation = async (action, parentIssueNodeId, childIssueNodeId) => {
-              const mutationField = action === 'add' ? 'addSubIssue' : 'removeSubIssue';
+              const mutationField = `${action}SubIssue`;
 
               const mutation = `
                 mutation {
