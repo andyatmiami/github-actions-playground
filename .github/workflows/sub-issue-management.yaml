@@ -118,6 +118,16 @@ jobs:
               return operations;
             };
 
+            const formatOperationsList = (operations, action) => {
+              if (operations.length === 0) return [];
+
+              return [
+                `### ${action} Sub-issues:`,
+                ...operations.map(op => `- #${op.issueNumber}`),
+                ''
+              ];
+            };
+
             try {
               const { owner, repo } = context.repo;
               const parentIssueNumber = context.payload.issue.number;
@@ -151,21 +161,10 @@ jobs:
               const addOperations = operations.filter(op => op.action === 'add');
               const removeOperations = operations.filter(op => op.action === 'remove');
 
-              if (addOperations.length > 0) {
-                previewBodyParts.push('### Adding Sub-issues:');
-                addOperations.forEach(op => {
-                  previewBodyParts.push(`- #${op.issueNumber} - ${op.title}`);
-                });
-                previewBodyParts.push('');
-              }
-
-              if (removeOperations.length > 0) {
-                previewBodyParts.push('### Removing Sub-issues:');
-                removeOperations.forEach(op => {
-                  previewBodyParts.push(`- #${op.issueNumber} - ${op.title}`);
-                });
-                previewBodyParts.push('');
-              }
+              previewBodyParts.push(
+                ...formatOperationsList(addOperations, 'Adding'),
+                ...formatOperationsList(removeOperations, 'Removing')
+              );
 
               previewBodyParts.push('_This is a preview of the changes. The actual operations will be executed in the background._');
 
