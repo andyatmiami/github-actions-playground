@@ -10,9 +10,6 @@ permissions:
 jobs:
   handle-slash-command:
     if: |
-      # Only trigger on issues, not PRs
-      # Only allow certain users to use the slash commands (presently corresponds to epic owners)
-      # Only support add-sub-issue and remove-sub-issue commands (for now)
       github.event.issue.pull_request == null
       && contains(
           fromJson('["thesuperzapper", "ederign", "andyatmiami", "paulomvr", "jenny_s51", "harshad16"]'),
