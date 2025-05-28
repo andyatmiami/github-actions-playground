@@ -119,13 +119,12 @@ jobs:
         if: failure()
         uses: actions/github-script@v7
         with:
-          error-message: ${{ steps.handle-commands.outputs.error_message }}
           script: |
             try {
               const commentUrl = context.payload.comment.html_url;
               const runId = context.runId;
               const { owner, repo } = context.repo;
-              const errorMessage = context.inputs['error-message'];
+              const errorMessage = '${{ steps.handle-commands.outputs.error_message }}';
 
               const errorBodyParts = [
                 ':x: **GitHub Action Failed**',
