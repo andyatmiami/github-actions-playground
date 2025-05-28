@@ -10,15 +10,18 @@ permissions:
 jobs:
   handle-slash-command:
     if: |
-      github.event.issue.pull_request == null  # Only trigger on issues, not PRs
+      # Only trigger on issues, not PRs
+      # Only allow certain users to use the slash commands (presently corresponds to epic owners)
+      # Only support add-sub-issue and remove-sub-issue commands (for now)
+      github.event.issue.pull_request == null
       && contains(
           fromJson('["thesuperzapper", "ederign", "andyatmiami", "paulomvr", "jenny_s51", "harshad16"]'),
           github.event.comment.user.login
-      ) # Only allow certain users to use the slash commands (presently corresponds to epic owners)
+      )
       && (
           contains(github.event.comment.body, '/add-sub-issue')
           || contains(github.event.comment.body, '/remove-sub-issue')
-      ) # Only support add-sub-issue and remove-sub-issue commands (for now)
+      )
     runs-on: ubuntu-latest
 
     steps:
