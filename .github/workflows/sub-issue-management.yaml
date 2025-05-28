@@ -47,11 +47,15 @@ jobs:
                   repository(owner: "${owner}", name: "${repo}") {
                     issue(number: ${issueNumber}) {
                       id
+                      title
                     }
                   }
                 }
               `);
-              return response.repository.issue.id;
+              return {
+                id: response.repository.issue.id,
+                title: response.repository.issue.title
+              };
             };
 
             const performSubIssueMutation = async (action, parentIssueNodeId, childIssueNodeId) => {
@@ -84,16 +88,24 @@ jobs:
               }
             };
 
-            const processSubIssueCommand = async (line, action, owner, repo, parentIssueNodeId) => {
+            const collectSubIssueOperations = async (line, action, owner, repo) => {
               const commandPrefix = `/${action}-sub-issue`;
-              if (!line.startsWith(commandPrefix)) return;
+              if (!line.startsWith(commandPrefix)) return [];
 
               const args = line.replace(commandPrefix, '').trim().split(/\s+/);
+              const operations = [];
+
               for (const issue of args) {
                 const childIssueNumber = parseIssueNumber(issue);
-                const childIssueNodeId = await getIssueNodeId(owner, repo, childIssueNumber);
-                await performSubIssueMutation(action, parentIssueNodeId, childIssueNodeId);
+                const childIssue = await getIssueNodeId(owner, repo, childIssueNumber);
+                operations.push({
+                  action,
+                  issueNumber: childIssueNumber,
+                  title: childIssue.title
+                });
               }
+
+              return operations;
             };
 
             try {
@@ -101,15 +113,74 @@ jobs:
               const parentIssueNumber = context.payload.issue.number;
               const commentBody = context.payload.comment.body;
 
-              // Get parent issue node ID
-              const parentIssueNodeId = await getIssueNodeId(owner, repo, parentIssueNumber);
+              // Get parent issue node ID and title
+              const parentIssue = await getIssueNodeId(owner, repo, parentIssueNumber);
 
-              // Process each line of the comment
+              // Collect all operations first
               const lines = commentBody.split('\n');
+              const operations = [];
+
               for (const line of lines) {
-                await processSubIssueCommand(line, 'add', owner, repo, parentIssueNodeId);
-                await processSubIssueCommand(line, 'remove', owner, repo, parentIssueNodeId);
+                operations.push(...await collectSubIssueOperations(line, 'add', owner, repo));
+                operations.push(...await collectSubIssueOperations(line, 'remove', owner, repo));
               }
+
+              if (operations.length === 0) {
+                return; // No valid operations found
+              }
+
+              // Create preview comment
+              const previewBodyParts = [
+                '🔍 **Sub-issue Operation Preview**',
+                '',
+                `The following operations will be performed on issue #${parentIssueNumber} (${parentIssue.title}) at the request of @${context.payload.comment.user.login}:`,
+                ''
+              ];
+
+              // Group operations by action for display
+              const addOperations = operations.filter(op => op.action === 'add');
+              const removeOperations = operations.filter(op => op.action === 'remove');
+
+              if (addOperations.length > 0) {
+                previewBodyParts.push('### Adding Sub-issues:');
+                addOperations.forEach(op => {
+                  previewBodyParts.push(`- #${op.issueNumber} - ${op.title}`);
+                });
+                previewBodyParts.push('');
+              }
+
+              if (removeOperations.length > 0) {
+                previewBodyParts.push('### Removing Sub-issues:');
+                removeOperations.forEach(op => {
+                  previewBodyParts.push(`- #${op.issueNumber} - ${op.title}`);
+                });
+                previewBodyParts.push('');
+              }
+
+              previewBodyParts.push('_This is a preview of the changes. The actual operations will be performed in the next step._');
+
+              // Post preview comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: parentIssueNumber,
+                body: previewBodyParts.join('\n')
+              });
+
+              // Execute operations in original order
+              for (const op of operations) {
+                const childIssue = await getIssueNodeId(owner, repo, op.issueNumber);
+                await performSubIssueMutation(op.action, parentIssue.id, childIssue.id);
+              }
+
+              // Post success comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: parentIssueNumber,
+                body: '✅ All sub-issue operations have been completed successfully.'
+              });
+
             } catch (error) {
               core.setOutput('error_message', error.message);
               core.setFailed(error.message);
