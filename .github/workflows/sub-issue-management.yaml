@@ -98,7 +98,7 @@ jobs:
             };
 
             try {
-              const [owner, repo] = context.repo.split('/');
+              const { owner, repo } = context.repo;
               const parentIssueNumber = context.payload.issue.number;
               const commentBody = context.payload.comment.body;
 
@@ -124,7 +124,7 @@ jobs:
           script: |
             const commentUrl = context.payload.comment.html_url;
             const runId = context.runId;
-            const repo = context.repo;
+            const { owner, repo } = context.repo;
             const errorMessage = '${{ steps.handle-commands.outputs.error_message }}';
 
             const errorBodyParts = [
@@ -132,7 +132,7 @@ jobs:
               '',
               `The workflow encountered an error while processing [your comment](${commentUrl}) to manage sub-issues.`,
               '',
-              `:point_right: [View the run](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})`,
+              `:point_right: [View the run](https://github.com/${owner}/${repo}/actions/runs/${runId})`,
               ''
             ];
 
@@ -153,8 +153,8 @@ jobs:
             errorBodyParts.push('Please check the logs and try again, or open a bug report if the issue persists.');
 
             await github.rest.issues.createComment({
-              owner: repo.owner,
-              repo: repo.repo,
+              owner,
+              repo,
               issue_number: context.payload.issue.number,
               body: errorBodyParts.join('\n')
             });
