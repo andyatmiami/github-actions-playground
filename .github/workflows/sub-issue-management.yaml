@@ -140,7 +140,7 @@ jobs:
 
               // Create preview comment
               const previewBodyParts = [
-                '🔍 **Sub-issue Operation Preview**',
+                ':mag: **Sub-issue Operation Preview**',
                 '',
                 `The following operations will be performed on issue #${parentIssueNumber} (${parentIssue.title}) at the request of @${context.payload.comment.user.login}:`,
                 ''
@@ -188,7 +188,7 @@ jobs:
                 repo,
                 issue_number: parentIssueNumber,
                 body: [
-                  '✅ **GitHub Action Succeeded**',
+                  ':white_check_mark: **GitHub Action Succeeded**',
                   '',
                   `All [sub-issue operations](${previewComment.data.html_url}) requested by @${context.payload.comment.user.login} have been completed successfully.`,
                   '',
