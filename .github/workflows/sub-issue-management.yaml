@@ -160,7 +160,7 @@ jobs:
               previewBodyParts.push('_This is a preview of the changes. The actual operations will be performed in the next step._');
 
               // Post preview comment
-              await github.rest.issues.createComment({
+              const previewComment = await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: parentIssueNumber,
@@ -178,7 +178,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: parentIssueNumber,
-                body: '✅ All sub-issue operations have been completed successfully.'
+                body: `✅ All [sub-issue operations](${previewComment.data.html_url}) requested by @${context.payload.comment.user.login} have been completed successfully.`
               });
 
             } catch (error) {
