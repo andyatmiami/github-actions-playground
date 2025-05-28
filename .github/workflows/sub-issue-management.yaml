@@ -124,7 +124,7 @@ jobs:
               const commentUrl = context.payload.comment.html_url;
               const runId = context.runId;
               const { owner, repo } = context.repo;
-              const errorMessage = '${{ steps.handle-commands.outputs.error_message }}';
+              const errorMessage = `${{ steps.handle-commands.outputs.error_message }}`;
 
               const errorBodyParts = [
                 ':x: **GitHub Action Failed**',
