@@ -7,159 +7,132 @@ on:
 permissions:
   issues: write
 
-env:
-    GH_TOKEN: ${{ github.token }}
-
 jobs:
   handle-sub-issue-command:
     if: github.event.issue.pull_request == null  # ✅ Only trigger on issues, not PRs
     runs-on: ubuntu-latest
 
     steps:
-      - name: Write comment body to file
-        run: |
-          echo "${{ github.event.comment.body }}" > comment.txt
+      - name: Handle sub-issue commands
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const parseIssueNumber = (input) => {
+              if (!input) return null;
 
-      - name: Parse and act on slash commands
-        run: |
-          set -euo pipefail
-
-          parse_issue_number() {
-            input="${1:-}"
-
-            case "${input}" in
-              [0-9]*)
-                printf "%s" "${input}"
-                ;;
-              \#*)
-                printf "%s" "${input}" | sed -n 's/^#\([0-9]\+\)$/\1/p'
-                ;;
-              *"/issues/"*)
-                printf "%s" "${input}" | sed -n 's#.*/issues/\([0-9][0-9]*\)$#\1#p'
-                ;;
-              *)
-                echo "Error: Could not parse issue number from input: '${input}'" > error_summary.txt
-                return 1
-                ;;
-            esac
-          }
-
-          execute_mutation() {
-            mutation_body="${1:-}"
-
-            set +e
-            response=$(gh api graphql -f query="${mutation_body}")
-            rc=$?
-            set -e
-
-            if ! [ "${rc}" = "0" ]; then
-              jq -r '[ .errors[]?.message ] | if length > 0 then join ("\n") else empty end' <<< "${response}" > error_summary.txt
-              exit "${rc}"
-            fi
-          }
-
-          perform_sub_issue_mutation() {
-            action="${1:-}"  # "add" or "remove"
-            child_issue="${2:-}"
-
-            child_issue_number=$(parse_issue_number "${child_issue}")
-            child_issue_node_id=$(gh api graphql -f query="
-              query {
-                repository(owner: \"${gh_owner}\", name: \"${gh_repo_name}\") {
-                  issue(number: ${child_issue_number}) {
-                    id
-                  }
-                }
-              }" | jq -r '.data.repository.issue.id')
-            echo "child_issue_node_id: ${child_issue_node_id}"
-
-            mutation_field="${action}SubIssue"
-            mutation_query="
-              mutation {
-                ${mutation_field}(input: {
-                  issueId: \"${parent_issue_node_id}\",
-                  subIssueId: \"${child_issue_node_id}\"
-                }) {
-                  clientMutationId
-                  issue {
-                    id
-                    title
-                  }
-                  subIssue {
-                    id
-                    title
-                  }
-                }
-              }"
-
-            execute_mutation "${mutation_query}"
-          }
-
-          gh_owner="${GITHUB_REPOSITORY%/*}"
-          gh_repo_name="${GITHUB_REPOSITORY#*/}"
-
-          parent_issue_number=${{ github.event.issue.number }}
-          parent_issue_node_id=$(gh api graphql -f query="
-            query {
-              repository(owner: \"${gh_owner}\", name: \"${gh_repo_name}\") {
-                issue(number: ${parent_issue_number}) {
-                  id
-                }
+              // Handle plain number
+              if (/^\d+$/.test(input)) {
+                return input;
               }
-            }" | jq -r '.data.repository.issue.id')
 
-          echo "parent_issue_node_id: ${parent_issue_node_id}"
+              // Handle #number format
+              const hashMatch = input.match(/^#(\d+)$/);
+              if (hashMatch) {
+                return hashMatch[1];
+              }
 
-          while IFS= read -r line; do
-            if echo "$line" | grep -qE '^/add-sub-issue'; then
-              args=$(echo "$line" | sed -E 's|^/add-sub-issue *||')
-              for issue in $args; do
-                perform_sub_issue_mutation "add" "$issue"
-              done
-            elif echo "$line" | grep -qE '^/remove-sub-issue'; then
-              args=$(echo "$line" | sed -E 's|^/remove-sub-issue *||')
-              for issue in $args; do
-                perform_sub_issue_mutation "remove" "$issue"
-              done
-            fi
-          done < comment.txt
+              // Handle URL format
+              const urlMatch = input.match(/\/issues\/(\d+)$/);
+              if (urlMatch) {
+                return urlMatch[1];
+              }
+
+              throw new Error(`Could not parse issue number from input: '${input}'`);
+            };
+
+            const getIssueNodeId = async (owner, repo, issueNumber) => {
+              const response = await github.graphql(`
+                query {
+                  repository(owner: "${owner}", name: "${repo}") {
+                    issue(number: ${issueNumber}) {
+                      id
+                    }
+                  }
+                }
+              `);
+              return response.repository.issue.id;
+            };
+
+            const performSubIssueMutation = async (action, parentIssueNodeId, childIssueNodeId) => {
+              const mutationField = action === 'add' ? 'addSubIssue' : 'removeSubIssue';
+
+              const mutation = `
+                mutation {
+                  ${mutationField}(input: {
+                    issueId: "${parentIssueNodeId}",
+                    subIssueId: "${childIssueNodeId}"
+                  }) {
+                    clientMutationId
+                    issue {
+                      id
+                      title
+                    }
+                    subIssue {
+                      id
+                      title
+                    }
+                  }
+                }
+              `;
+
+              try {
+                const response = await github.graphql(mutation);
+                return response;
+              } catch (error) {
+                throw new Error(error.message);
+              }
+            };
+
+            const processSubIssueCommand = async (line, action, owner, repo, parentIssueNodeId) => {
+              const commandPrefix = `/${action}-sub-issue`;
+              if (!line.startsWith(commandPrefix)) return;
+
+              const args = line.replace(commandPrefix, '').trim().split(/\s+/);
+              for (const issue of args) {
+                const childIssueNumber = parseIssueNumber(issue);
+                const childIssueNodeId = await getIssueNodeId(owner, repo, childIssueNumber);
+                await performSubIssueMutation(action, parentIssueNodeId, childIssueNodeId);
+              }
+            };
+
+            try {
+              const [owner, repo] = context.repo.split('/');
+              const parentIssueNumber = context.payload.issue.number;
+              const commentBody = context.payload.comment.body;
+
+              // Get parent issue node ID
+              const parentIssueNodeId = await getIssueNodeId(owner, repo, parentIssueNumber);
+
+              // Process each line of the comment
+              const lines = commentBody.split('\n');
+              for (const line of lines) {
+                await processSubIssueCommand(line, 'add', owner, repo, parentIssueNodeId);
+                await processSubIssueCommand(line, 'remove', owner, repo, parentIssueNodeId);
+              }
+            } catch (error) {
+              core.setFailed(error.message);
+            }
 
       - name: Post error comment if failure
         if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          COMMENT_URL: ${{ github.event.comment.html_url }}
-        run: |
-          error_summary=
-          if [ -f "error_summary.txt" ]; then
-            error_summary=$(<error_summary.txt)
-          fi
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commentUrl = context.payload.comment.html_url;
+            const runId = context.runId;
+            const repo = context.repo;
 
-          {
-            echo ":x: **GitHub Action Failed**"
-            echo
-            echo "The workflow encountered an error while processing [your comment](${COMMENT_URL}) to manage sub-issues."
-            echo
-            echo ":point_right: [View the run](https://github.com/${REPO}/actions/runs/${RUN_ID})"
-            echo
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `:x: **GitHub Action Failed**
 
-            if [ -n "$error_summary" ]; then
-              echo "<details>"
-              echo "<summary>Expand to see error summary</summary>"
-              echo
-              echo '```bash'
-              echo "${error_summary}"
-              echo '```'
-              echo "</details>"
-              echo
-            fi
+The workflow encountered an error while processing [your comment](${commentUrl}) to manage sub-issues.
 
-            echo "Please check the logs and try again, or open a bug report if the issue persists."
-          } > comment.md
+:point_right: [View the run](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})
 
-          gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" \
-            --method POST \
-            --raw-field body="$(<comment.md)"
+Please check the logs and try again, or open a bug report if the issue persists.`
+            });
