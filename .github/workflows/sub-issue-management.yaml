@@ -110,7 +110,8 @@ jobs:
                 operations.push({
                   action,
                   issueNumber: childIssueNumber,
-                  title: childIssue.title
+                  title: childIssue.title,
+                  nodeId: childIssue.id
                 });
               }
 
@@ -178,8 +179,7 @@ jobs:
 
               // Execute operations in original order
               for (const op of operations) {
-                const childIssue = await getIssueNodeId(owner, repo, op.issueNumber);
-                await performSubIssueMutation(op.action, parentIssue.id, childIssue.id);
+                await performSubIssueMutation(op.action, parentIssue.id, op.nodeId);
               }
 
               // Post success comment
@@ -191,7 +191,7 @@ jobs:
                   ':white_check_mark: **GitHub Action Succeeded**',
                   '',
                   `All [sub-issue operations](${previewComment.data.html_url}) requested by @${context.payload.comment.user.login} have been completed successfully.`,
-                  '',
+                  ''
                 ].join('\n')
               });
 
