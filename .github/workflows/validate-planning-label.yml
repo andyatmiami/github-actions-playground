@@ -1,0 +1,80 @@
+name: Validate Planning Label
+
+on:
+  issues:
+    types: [labeled]
+
+env:
+  AUTHORIZED_USERS: '["astonebe"]'
+
+jobs:
+  validate-user:
+    if: github.event.label.name == 'planning'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate user authorization
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const AUTHORIZED_USERS = JSON.parse(process.env.AUTHORIZED_USERS);
+            const actor = context.actor;
+            const issueNumber = context.issue.number;
+
+            // Get current issue labels
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const currentLabels = issue.labels.map(label => label.name);
+            const planningLabels = ['epic', 'feature', 'task'];
+            const presentPlanningLabels = currentLabels.filter(label => planningLabels.includes(label));
+
+            if (!AUTHORIZED_USERS.includes(actor)) {
+              console.error(`User ${actor} is not authorized to add planning labels`);
+
+              // Remove the planning label
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'planning'
+              });
+
+              // Add a comment explaining why the label was removed
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${actor} You are not authorized to add planning labels. Only authorized users can add planning labels to issues.`
+              });
+
+              core.setFailed(`User ${actor} is not authorized to add planning labels`);
+            }
+
+            // Check if exactly one planning-related label is present
+            if (presentPlanningLabels.length !== 1) {
+              console.error(`Planning label requires exactly one of: ${planningLabels.join(', ')}`);
+
+              // Remove the planning label
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'planning'
+              });
+
+              // Add a comment explaining why the label was removed
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${actor} The planning label requires exactly one of the following labels to be present: ${planningLabels.join(', ')}. Please add one of these labels before adding the planning label.`
+              });
+
+              core.setFailed(`Planning label requires exactly one of: ${planningLabels.join(', ')}`);
+            }
+
+            console.log(`User ${actor} is authorized to add planning labels`);
+            console.log(`Issue has valid planning label combination: planning + ${presentPlanningLabels[0]}`);
