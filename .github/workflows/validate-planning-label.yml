@@ -1,23 +1,23 @@
-name: Validate Planning Label
+name: Validate Planning Issue
 
 on:
   issues:
     types: [opened, labeled]
 
 env:
-  AUTHORIZED_USERS: '["astonebe"]'
+  AUTHORIZED_USERS: '["andyatmiami"]'
 
 permissions:
   issues: write
 
 jobs:
-  validate-user:
+  validate-issue:
     if: |
       github.event.label.name == 'planning' ||
       (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'planning'))
     runs-on: ubuntu-latest
     steps:
-      - name: Validate user authorization
+      - name: Validate issue
         uses: actions/github-script@v7
         with:
           script: |
