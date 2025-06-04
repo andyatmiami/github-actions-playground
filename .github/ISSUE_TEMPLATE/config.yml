@@ -1,4 +1,15 @@
-blank_issues_enabled: true
+issue_templates:
+  - 01_bug_report.yml
+  - 02_feature_request.yml
+  - type: blank
+  - 03_planning_epic.yml
+  - 04_planning_feature.yml
+  - 05_planning_task.yml
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
 contact_links:
   - name: Kubeflow Documentation
     url: https://www.kubeflow.org/
