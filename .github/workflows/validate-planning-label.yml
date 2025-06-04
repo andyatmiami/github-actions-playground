@@ -7,6 +7,9 @@ on:
 env:
   AUTHORIZED_USERS: '["astonebe"]'
 
+permissions:
+  issues: write
+
 jobs:
   validate-user:
     if: |
