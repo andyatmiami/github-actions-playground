@@ -17,7 +17,7 @@ jobs:
       (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'planning'))
     runs-on: ubuntu-latest
     steps:
-      - name: Validate issue
+      - name: Log trigger
         uses: actions/github-script@v7
         with:
           script: |
@@ -28,13 +28,17 @@ jobs:
               console.log(`Issue opened with labels: ${context.payload.issue.labels.map(l => l.name).join(', ')}`);
             }
 
+      - name: Handle labeled action
+        if: github.event.action == 'labeled'
+        uses: actions/github-script@v7
+        with:
+          script: |
             const AUTHORIZED_USERS = JSON.parse(process.env.AUTHORIZED_USERS);
             const actor = context.actor;
             const issueNumber = context.issue.number;
-            const isNewIssue = context.eventName === 'issues' && context.payload.action === 'opened';
 
-            // Helper function to remove planning label and handle failure
-            async function handleValidationFailure(message, shouldClose = false) {
+            // First check user authorization
+            if (!AUTHORIZED_USERS.includes(actor)) {
               // Remove the planning label
               await github.rest.issues.removeLabel({
                 owner: context.repo.owner,
@@ -48,23 +52,15 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: `@${actor} ${message}`
+                body: `@${actor} You are not authorized to add planning labels. Only authorized users can add planning labels to issues.`
               });
 
-              // Close the issue if it's new and should be closed
-              if (isNewIssue && shouldClose) {
-                await github.rest.issues.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  state: 'closed'
-                });
-              }
-
-              core.setFailed(message);
+              core.setFailed(`User ${actor} is not authorized to add planning labels`);
             }
 
-            // Get current issue labels
+            console.log(`User ${actor} is authorized to add planning labels`);
+
+            // Then check planning label requirements
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -75,21 +71,55 @@ jobs:
             const planningLabels = ['epic', 'feature', 'task', 'bug'];
             const presentPlanningLabels = currentLabels.filter(label => planningLabels.includes(label));
 
-            // Check user authorization
-            if (!AUTHORIZED_USERS.includes(actor)) {
-              await handleValidationFailure(
-                'You are not authorized to add planning labels. Only authorized users can add planning labels to issues.',
-                true
-              );
-            }
-
-            // Check planning label requirements
             if (presentPlanningLabels.length !== 1) {
-              await handleValidationFailure(
-                `The planning label requires exactly one of the following labels to be present: ${planningLabels.join(', ')}. Please add one of these labels before adding the planning label.`,
-                true
-              );
+              // Remove the planning label
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'planning'
+              });
+
+              // Add a comment explaining why the label was removed
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${actor} The planning label requires exactly one of the following labels to be present: ${planningLabels.join(', ')}. Please add one of these labels before adding the planning label.`
+              });
+
+              core.setFailed(`Planning label requires exactly one of: ${planningLabels.join(', ')}`);
             }
 
-            console.log(`User ${actor} is authorized to add planning labels`);
             console.log(`Issue has valid planning label combination: planning + ${presentPlanningLabels[0]}`);
+
+      - name: Handle opened action
+        if: github.event.action == 'opened'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const AUTHORIZED_USERS = JSON.parse(process.env.AUTHORIZED_USERS);
+            const actor = context.actor;
+            const issueNumber = context.issue.number;
+
+            if (!AUTHORIZED_USERS.includes(actor)) {
+              // Add a comment explaining why the issue will be closed
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${actor} You are not authorized to create planning issues. Only authorized users can create planning issues.`
+              });
+
+              // Close the issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                state: 'closed'
+              });
+
+              core.setFailed(`User ${actor} is not authorized to create planning issues`);
+            }
+
+            console.log(`User ${actor} is authorized to create planning issues`);
