@@ -1,14 +1,10 @@
 issue_templates:
-  - 01_bug_report.yml
-  - 02_feature_request.yml
-  - type: blank
-  - 03_planning_epic.yml
-  - 04_planning_feature.yml
-  - 05_planning_task.yml
-  - type: markdown
-    attributes:
-      value: |
-        ---
+  - bug_report.yml
+  - feature_request.yml
+  - blank_issue.yml
+  - planning_epic.yml
+  - planning_feature.yml
+  - planning_task.yml
 
 contact_links:
   - name: Kubeflow Documentation
