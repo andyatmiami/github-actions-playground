@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate-issue:
     if: |
-      github.event.label.name == 'planning' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'planning') ||
       (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'planning'))
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +21,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            console.log(`Action triggered by: ${context.eventName} event with action: ${context.payload.action}`);
+            if (context.payload.action === 'labeled') {
+              console.log(`Label added: ${context.payload.label.name}`);
+            } else if (context.payload.action === 'opened') {
+              console.log(`Issue opened with labels: ${context.payload.issue.labels.map(l => l.name).join(', ')}`);
+            }
+
             const AUTHORIZED_USERS = JSON.parse(process.env.AUTHORIZED_USERS);
             const actor = context.actor;
             const issueNumber = context.issue.number;
