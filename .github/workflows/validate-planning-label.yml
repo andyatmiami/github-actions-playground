@@ -5,7 +5,7 @@ on:
     types: [opened, labeled]
 
 env:
-  AUTHORIZED_USERS: '["andyatmiami"]'
+  AUTHORIZED_USERS: '["andyatmiami", "jenny-s51"]'
 
 permissions:
   issues: write
