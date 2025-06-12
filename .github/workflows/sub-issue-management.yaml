@@ -12,7 +12,7 @@ jobs:
     if: |
       github.event.issue.pull_request == null
       && contains(
-          fromJson('["thesuperzapper", "ederign", "andyatmiami", "paulomvr", "jenny_s51", "harshad16"]'),
+          fromJson('["thesuperzapper", "ederign", "andyatmiami", "paulomvr", "jenny_s51", "harshad16", "andyatmiami-clone-1"]'),
           github.event.comment.user.login
       )
       && (
