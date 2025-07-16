@@ -11,10 +11,7 @@ jobs:
   handle-slash-command:
     if: |
       github.event.issue.pull_request == null
-      && contains(
-          fromJson('["thesuperzapper", "ederign", "andyatmiami", "paulomvr", "jenny_s51", "harshad16", "andyatmiami-clone-1"]'),
-          github.event.comment.user.login
-      )
+      && contains('["thesuperzapper", "ederign", "andyatmiami", "paulovmr", "jenny_s51", "harshad16", "thaorell"]', github.event.comment.user.login)
       && (
           contains(github.event.comment.body, '/add-sub-issue')
           || contains(github.event.comment.body, '/remove-sub-issue')

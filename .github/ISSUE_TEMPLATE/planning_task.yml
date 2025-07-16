@@ -1,9 +1,8 @@
-name: 🔧 [Planning] Task
-description: 🛑 Only intended to be used by Kubeflow Notebooks 2.0 project managers
+name: "[Planning] Task"
+description: "🛑 Only intended to be used by Kubeflow project managers"
 title: "[TASK] <short description>"
 labels:
-  - "task"
-  - "planning"
+  - "kind/plan-task"
 assignees: []
 body:
   - type: markdown
