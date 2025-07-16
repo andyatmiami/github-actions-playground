@@ -5,7 +5,7 @@ on:
     types: [opened, labeled]
 
 env:
-  AUTHORIZED_USERS: '["andyatmiami", "jenny-s51", "andyatmiami-clone-1"]'
+  AUTHORIZED_USERS: '["thesuperzapper", "ederign", "andyatmiami", "paulovmr", "jenny_s51", "harshad16", "thaorell"]'
 
 permissions:
   issues: write
@@ -13,8 +13,8 @@ permissions:
 jobs:
   validate-issue:
     if: |
-      (github.event.action == 'labeled' && github.event.label.name == 'planning') ||
-      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'planning'))
+      (github.event.action == 'labeled' && (github.event.label.name == 'kind/plan-epic' || github.event.label.name == 'kind/plan-feature' || github.event.label.name == 'kind/plan-task')) ||
+      (github.event.action == 'opened' && (contains(github.event.issue.labels.*.name, 'kind/plan-epic') || contains(github.event.issue.labels.*.name, 'kind/plan-feature') || contains(github.event.issue.labels.*.name, 'kind/plan-task')))
     runs-on: ubuntu-latest
     steps:
       - name: Log trigger
@@ -36,6 +36,7 @@ jobs:
             const AUTHORIZED_USERS = JSON.parse(process.env.AUTHORIZED_USERS);
             const actor = context.actor;
             const issueNumber = context.issue.number;
+            const addedLabel = context.payload.label.name;
 
             // First check user authorization
             if (!AUTHORIZED_USERS.includes(actor)) {
@@ -44,7 +45,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                name: 'planning'
+                name: addedLabel
               });
 
               // Add a comment explaining why the label was removed
@@ -68,7 +69,7 @@ jobs:
             });
 
             const currentLabels = issue.labels.map(label => label.name);
-            const planningLabels = ['epic', 'feature', 'task', 'bug'];
+            const planningLabels = ['kind/plan-epic', 'kind/plan-feature', 'kind/plan-task'];
             const presentPlanningLabels = currentLabels.filter(label => planningLabels.includes(label));
 
             if (presentPlanningLabels.length !== 1) {
@@ -77,7 +78,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                name: 'planning'
+                name: addedLabel
               });
 
               // Add a comment explaining why the label was removed
@@ -85,13 +86,13 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: `@${actor} The planning label requires exactly one of the following labels to be present: ${planningLabels.join(', ')}. Please add one of these labels before adding the planning label.`
+                body: `@${actor} Planning labels require exactly one planning label to be present: ${planningLabels.join(', ')}. Please ensure only one planning label is applied.`
               });
 
-              core.setFailed(`Planning label requires exactly one of: ${planningLabels.join(', ')}`);
+              core.setFailed(`Planning labels require exactly one of: ${planningLabels.join(', ')}`);
             }
 
-            console.log(`Issue has valid planning label combination: planning + ${presentPlanningLabels[0]}`);
+            console.log(`Issue has valid planning label: ${presentPlanningLabels[0]}`);
 
       - name: Handle opened action
         if: github.event.action == 'opened'
